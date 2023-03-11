@@ -20,7 +20,7 @@ vector<vector<int>> generate_matrix(int n, bool random = true){
     return matrix;
 }
 
-void multiply_matrices(vector<vector<int>> first, vector<vector<int>> second, vector<vector<int>> &res_matrix, int n) {
+void multiply_matrices(vector<vector<int>> &first, vector<vector<int>> &second, vector<vector<int>> &res_matrix, int n) {
     for (int i=0; i<n; i++){
         for(int j=0; j<n; j++){
             int sum = 0;
@@ -31,6 +31,7 @@ void multiply_matrices(vector<vector<int>> first, vector<vector<int>> second, ve
         }
     }
 }
+
 
 
 
