@@ -226,8 +226,7 @@ void test_algo_correctness() {
     cout << boolalpha << eq_matrices(res1, res4) << endl;
 }
 
-void test_function(const function<void(MInt&, MInt&, MInt&)>& function_being_tested, int exp, string &name, unsigned attempts = 1) {
-    printf("<|%s|-[ex:*att=%d*:avg]>:\n", name.c_str(), attempts);
+void test_function(const function<void(MInt&, MInt&, MInt&)>& function_being_tested, int exp, unsigned attempts = 1) {
         clock_t t, total_t = 0;
         int size = pow(2, exp);
         MInt first = generate_matrix(size);
@@ -245,12 +244,66 @@ void test_function(const function<void(MInt&, MInt&, MInt&)>& function_being_tes
         cout << ((float)total_t / attempts) / CLOCKS_PER_SEC << endl;
 }
 
-void measure(string &name, int attempts) {
+void measure(const function<void(MInt&, MInt&, MInt&)>& function_being_tested, string &name, int attempts, vector<int> &exps) {
+    printf("<|%s|-[ex:*att=%d*:avg]>:\n", name.c_str(), attempts);
+    for (int e : exps) {
+        test_function(function_being_tested, e, attempts);
+    }
 
 }
 
+
 int main() {
-    int max_exp = 10;
+    int attempts = 5;
+    // measures for small exps
+    vector<int> small_eps = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+
     string name = "classic";
-    test_function(classic_transposed_multiply_matrices, 10, name, 2);
+    measure(classic_multiply_matrices, name, attempts, small_eps);
+    name = "classic_transposed";
+    measure(classic_transposed_multiply_matrices, name, attempts, small_eps);
+    name = "block";
+    measure(block_recursive_multiply_matrices, name, attempts, small_eps);
+    name = "block_transposed";
+    measure(block_transposed_recursive_multiply_matrices, name, attempts, small_eps);
+
+
+    // measures for big exps
+    small_eps = {10, 11, 12};
+
+    name = "classic";
+    measure(classic_multiply_matrices, name, attempts, small_eps);
+    name = "classic_transposed";
+    measure(classic_transposed_multiply_matrices, name, attempts, small_eps);
+    name = "block";
+    measure(block_recursive_multiply_matrices, name, attempts, small_eps);
+    name = "block_transposed";
+    measure(block_transposed_recursive_multiply_matrices, name, attempts, small_eps);
+
+
+    // measures for big 1 exps
+    small_eps = {12, 13, 14};
+
+    name = "classic";
+    measure(classic_multiply_matrices, name, attempts, small_eps);
+    name = "classic_transposed";
+    measure(classic_transposed_multiply_matrices, name, attempts, small_eps);
+    name = "block";
+    measure(block_recursive_multiply_matrices, name, attempts, small_eps);
+    name = "block_transposed";
+    measure(block_transposed_recursive_multiply_matrices, name, attempts, small_eps);
+
+    // measures for big 2 exps
+    small_eps = {15, 16};
+
+    name = "classic";
+    measure(classic_multiply_matrices, name, attempts, small_eps);
+    name = "classic_transposed";
+    measure(classic_transposed_multiply_matrices, name, attempts, small_eps);
+    name = "block";
+    measure(block_recursive_multiply_matrices, name, attempts, small_eps);
+    name = "block_transposed";
+    measure(block_transposed_recursive_multiply_matrices, name, attempts, small_eps);
+
+
 }
