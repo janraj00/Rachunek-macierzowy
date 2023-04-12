@@ -9,6 +9,7 @@
 using namespace std;
 
 #define SMALL_DIM 256
+#define N 2055
 
 typedef vector<vector<float>> Mfloat;
 typedef pair<int, int> Icoors;
@@ -261,17 +262,16 @@ pair<Mfloat, Mfloat> lu_decomp_matrix(Mfloat &A, int r, int c, int dim) {
         L1[0][0] = 1;
         Mfloat U1 = generate_matrix(dim);
         U1[0][0] = A[r][c];
-        return pair<Mfloat, Mfloat>(L1, U1);
+        pair<Mfloat, Mfloat> res = make_pair(L1, U1);
+        return res;
     }
 
     Mfloat L = generate_matrix(dim);
     Mfloat U = generate_matrix(dim);
 
     int hdim = dim / 2;
-    Mfloat zeros = generate_matrix(hdim);
 
     pair<Mfloat, Mfloat> LU_11 = lu_decomp_matrix(A, r, c, hdim);
-
     //Oblicz rekurencyjnie [L11,U11] = LU(A11)
     Mfloat L11 = LU_11.first;
     Mfloat U11 = LU_11.second;
@@ -283,7 +283,7 @@ pair<Mfloat, Mfloat> lu_decomp_matrix(Mfloat &A, int r, int c, int dim) {
     Mfloat L21 = generate_matrix(hdim);
     vector<Mfloat> to_multiply = {A, U11_inverse};
     multiply_matrices(to_multiply, {{r+hdim, c}, {0, 0}},
-                      L21, {r + hdim, c}, hdim);
+                      L21, {0, 0}, hdim);
 
     //L11_-1
     Mfloat L11_inverse = inverse_matrix(L11);
@@ -292,7 +292,7 @@ pair<Mfloat, Mfloat> lu_decomp_matrix(Mfloat &A, int r, int c, int dim) {
     Mfloat U12 = generate_matrix(hdim);
     to_multiply = {L11_inverse, A};
     multiply_matrices(to_multiply, {{0, 0}, {r, c+hdim}},
-                      U12, {r, c+hdim}, hdim);
+                      U12, {0, 0}, hdim);
 
     //S
     Mfloat S_temp = generate_matrix(hdim);
@@ -308,33 +308,60 @@ pair<Mfloat, Mfloat> lu_decomp_matrix(Mfloat &A, int r, int c, int dim) {
     pair<Mfloat, Mfloat> LU_S = lu_decomp_matrix(S, 0, 0, hdim);
     Mfloat U22 = LU_S.second;
     Mfloat L22 = LU_S.first;
+
+    copy_matrix(L11, 0, 0, L, c, r, hdim);
+    copy_matrix(L21, 0, 0, L, c+hdim, r, hdim);
+    copy_matrix(L22, 0, 0, L, c+hdim, r+hdim, hdim);
+    copy_matrix(U11, 0, 0, U, c, r, hdim);
+    copy_matrix(U12, 0, 0, U, c, r+hdim, hdim);
+    copy_matrix(U22, 0, 0, U, c+hdim, r+hdim, hdim);
+    return make_pair(L, U);
 }
 
-pair<Mfloat, Mfloat> lu_decomp(Mfloat &M) {
-    return lu_decomp_matrix(M, 0, 0, M.size());
+void lu_decomp(Mfloat &M) {
+    pair<Mfloat, Mfloat> niewiem = lu_decomp_matrix(M, 0, 0, M.size());
+}
+
+
+float compare_det_time(Mfloat &M){
+    float res = 0;
+    clock_t t_LU;
+    t_LU = clock();
+    pair<Mfloat, Mfloat> LU = lu_decomp_matrix(M, 0, 0, M.size());
+    Mfloat U = LU.second;
+    for (int i=0; i<M.size(); i++){
+        res *= U[i][i];
+    }
+    cout << res << endl;
 }
 
 
 void test_function(const function<void(Mfloat&)>& function_being_tested, int exp, unsigned submeasure_no = 1) {
-    clock_t t, total_t = 0;
+    clock_t t;
     int size = pow(2, exp);
     Mfloat M = generate_matrix(size, true);
     Mfloat res = generate_matrix(size);
 
-    cout << exp;
+    cout << exp << " ";
     for (int att=0; att < submeasure_no; att++) {
         t = clock();
         function_being_tested(M);
         t = clock() - t;
-        cout << ';' << ((float)t) / CLOCKS_PER_SEC;
-        total_t += t;
+        cout << ((float)t) / CLOCKS_PER_SEC;
+    }
+}
+
+void classic_vs_LU(vector<int> &exps) {
+    for (int e: exps) {
+        int size = pow(2, e);
+        Mfloat M = generate_matrix(size, true);
+        compare_det_time(M);
     }
 }
 
 
 
 void measure(const function<void(Mfloat&)>& function_being_tested, int submeasure_no, vector<int> &exps) {
-    cout << "k";
 
     for (int e : exps) {
         test_function(function_being_tested, e, submeasure_no);
@@ -345,5 +372,6 @@ void measure(const function<void(Mfloat&)>& function_being_tested, int submeasur
 
 int main() {
     vector<int> small_exps = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
-    measure(inverse_matrix, 1, small_exps);
+    //measure(lu_decomp, 1, small_exps);
+    classic_vs_LU(small_exps);
 }
