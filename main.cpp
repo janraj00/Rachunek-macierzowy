@@ -8,7 +8,7 @@
 
 using namespace std;
 
-#define SMALL_DIM 4
+#define SMALL_DIM 256
 
 typedef vector<vector<float>> Mfloat;
 typedef pair<int, int> Icoors;
@@ -103,55 +103,6 @@ void inner_block_recursive_multiply_matrices(Mfloat &fst, size_t r_fst, size_t c
     }
 }
 
-void inner_transposed_block_recursive_multiply_matrices(Mfloat &fst, size_t r_fst, size_t c_fst,
-                                                        Mfloat &sec, size_t r_sec, size_t c_sec,
-                                                        Mfloat &res, size_t r_res, size_t c_res,
-                                                        size_t dim) {
-    if (dim > SMALL_DIM) {
-        size_t rd = dim / 2;
-        // C 11 = A11*B11 + A12*B21
-        inner_transposed_block_recursive_multiply_matrices(fst, r_fst, c_fst,
-                                                sec, r_sec, c_sec,
-                                                res, r_res, c_res, rd);
-        inner_transposed_block_recursive_multiply_matrices(fst, r_fst, c_fst + rd,
-                                                sec, r_sec + rd, c_sec,
-                                                res, r_res, c_res, rd);
-        // C 12 = A11*B12 + A12*B22
-        inner_transposed_block_recursive_multiply_matrices(fst, r_fst, c_fst,
-                                                sec, r_sec, c_sec + rd,
-                                                res, r_res, c_res + rd, rd);
-        inner_transposed_block_recursive_multiply_matrices(fst, r_fst, c_fst + rd,
-                                                sec, r_sec + rd, c_sec + rd,
-                                                res, r_res, c_res + rd, rd);
-        // C 21 = A21*B11 + A22*B21
-        inner_transposed_block_recursive_multiply_matrices(fst, r_fst + rd, c_fst,
-                                                sec, r_sec, c_sec,
-                                                res, r_res + rd, c_res, rd);
-        inner_transposed_block_recursive_multiply_matrices(fst, r_fst + rd, c_fst + rd,
-                                                sec, r_sec + rd, c_sec,
-                                                res, r_res + rd, c_res, rd);
-
-        // C 22 = A21*B12 + A22*B22
-        inner_transposed_block_recursive_multiply_matrices(fst, r_fst + rd, c_fst,
-                                                sec, r_sec, c_sec + rd,
-                                                res, r_res + rd, c_res + rd, rd);
-        inner_transposed_block_recursive_multiply_matrices(fst, r_fst + rd, c_fst + rd,
-                                                sec, r_sec + rd, c_sec + rd,
-                                                res, r_res + rd, c_res + rd, rd);
-
-
-    } else {
-        for (int j=0; j<dim; j++) {
-            for (int i=0; i<dim; i++) {
-                float sum = 0;
-                for (int k=0; k<dim; k++) {
-                    sum += fst[r_fst + j][c_fst + k] * sec[c_sec + i][r_sec + k];
-                }
-                res[r_res + j][c_res + i] += sum;
-            }
-        }
-    }
-}
 
 void block_recursive_multiply_matrices(Mfloat &fst, Mfloat &sec, Mfloat &res) {
     size_t dim = fst.size();
@@ -161,18 +112,6 @@ void block_recursive_multiply_matrices(Mfloat &fst, Mfloat &sec, Mfloat &res) {
                                             dim);
 }
 
-void block_transposed_recursive_multiply_matrices(Mfloat &fst, Mfloat &sec, Mfloat &res) {
-    size_t dim = fst.size();
-    Mfloat transposed_second(dim);
-    for (int j = 0; j < dim; j++) {
-        transposed_second[j] = vector<float>(dim);
-    }
-    transpose(sec, transposed_second);
-    inner_transposed_block_recursive_multiply_matrices(fst, 0, 0,
-                                                       transposed_second, 0, 0,
-                                                       res, 0, 0,
-                                                       dim);
-}
 
 void copy_matrix(Mfloat &fr, int r_fr, int c_fr,
                  Mfloat &to, int r_to, int c_to, size_t dim) {
@@ -316,6 +255,65 @@ void unit_test_inverse() {
     print_mat(M_inv_M, w);
 }
 
+pair<Mfloat, Mfloat> lu_decomp_matrix(Mfloat &A, int r, int c, int dim) {
+    if (dim == 1) {
+        Mfloat L1 = generate_matrix(dim);
+        L1[0][0] = 1;
+        Mfloat U1 = generate_matrix(dim);
+        U1[0][0] = A[r][c];
+        return pair<Mfloat, Mfloat>(L1, U1);
+    }
+
+    Mfloat L = generate_matrix(dim);
+    Mfloat U = generate_matrix(dim);
+
+    int hdim = dim / 2;
+    Mfloat zeros = generate_matrix(hdim);
+
+    pair<Mfloat, Mfloat> LU_11 = lu_decomp_matrix(A, r, c, hdim);
+
+    //Oblicz rekurencyjnie [L11,U11] = LU(A11)
+    Mfloat L11 = LU_11.first;
+    Mfloat U11 = LU_11.second;
+
+    //Oblicz rekurencyjne U_11_-1 = inverse(U11)
+    Mfloat U11_inverse = inverse_matrix(U11);
+
+    //L_21
+    Mfloat L21 = generate_matrix(hdim);
+    vector<Mfloat> to_multiply = {A, U11_inverse};
+    multiply_matrices(to_multiply, {{r+hdim, c}, {0, 0}},
+                      L21, {r + hdim, c}, hdim);
+
+    //L11_-1
+    Mfloat L11_inverse = inverse_matrix(L11);
+
+    //U12
+    Mfloat U12 = generate_matrix(hdim);
+    to_multiply = {L11_inverse, A};
+    multiply_matrices(to_multiply, {{0, 0}, {r, c+hdim}},
+                      U12, {r, c+hdim}, hdim);
+
+    //S
+    Mfloat S_temp = generate_matrix(hdim);
+    Mfloat S = generate_matrix(hdim);
+    to_multiply = {A, U11_inverse, L11_inverse, A};
+    multiply_matrices(to_multiply, {{r+hdim, c}, {0, 0}, {0, 0}, {r, c+hdim}},
+                      S_temp, {0, 0}, hdim);
+    subtruct_matrices(A, r+hdim, c+hdim,
+                      S_temp, 0, 0,
+                      S, 0, 0, hdim);
+
+    //L22, U22
+    pair<Mfloat, Mfloat> LU_S = lu_decomp_matrix(S, 0, 0, hdim);
+    Mfloat U22 = LU_S.second;
+    Mfloat L22 = LU_S.first;
+}
+
+pair<Mfloat, Mfloat> lu_decomp(Mfloat &M) {
+    return lu_decomp_matrix(M, 0, 0, M.size());
+}
+
 
 void test_function(const function<void(Mfloat&)>& function_being_tested, int exp, unsigned submeasure_no = 1) {
     clock_t t, total_t = 0;
@@ -333,11 +331,10 @@ void test_function(const function<void(Mfloat&)>& function_being_tested, int exp
     }
 }
 
+
+
 void measure(const function<void(Mfloat&)>& function_being_tested, int submeasure_no, vector<int> &exps) {
     cout << "k";
-    for (int i=0; i < submeasure_no; i++) {
-        cout << ";subm-" << i;
-    } cout << '\n';
 
     for (int e : exps) {
         test_function(function_being_tested, e, submeasure_no);
@@ -347,7 +344,6 @@ void measure(const function<void(Mfloat&)>& function_being_tested, int submeasur
 }
 
 int main() {
-    unit_test_inverse();
-//    vector<int> small_exps = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
-//    measure(inverse_matrix, 5, small_exps);
+    vector<int> small_exps = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+    measure(inverse_matrix, 1, small_exps);
 }
