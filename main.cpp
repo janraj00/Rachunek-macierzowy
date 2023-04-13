@@ -5,6 +5,7 @@
 #include <functional>
 #include <random>
 #include <iomanip>
+#include <fstream>
 
 using namespace std;
 
@@ -32,6 +33,9 @@ Mfloat generate_matrix(size_t n, bool random = false) {
     }
     return matrix;
 }
+
+
+
 
 bool eq_matrices(Mfloat &m, Mfloat &other) {
     size_t n = m.size();
@@ -235,6 +239,21 @@ void print_mat(Mfloat &M, int width=10, int prec = 6) {
     }
 }
 
+void print_to_file(Mfloat &M){
+    fstream myfile;
+    myfile.open("example.txt",fstream::out | fstream::in);
+    myfile.clear();
+    myfile << "lal";
+    size_t n = M.size();
+    for (int j=0; j < n; j++) {
+        for (int i=0; i < n; i++) {
+            myfile << M[j][i] << "/t";
+        }
+        myfile << std::endl;
+    }
+    myfile.close();
+}
+
 
 // testing
 
@@ -324,15 +343,14 @@ void lu_decomp(Mfloat &M) {
 
 
 float compare_det_time(Mfloat &M){
-    float res = 0;
-    clock_t t_LU;
-    t_LU = clock();
+    float res = 1;
     pair<Mfloat, Mfloat> LU = lu_decomp_matrix(M, 0, 0, M.size());
     Mfloat U = LU.second;
     for (int i=0; i<M.size(); i++){
         res *= U[i][i];
     }
-    cout << res << endl;
+    //cout << res << endl;
+    print_mat(M);
 }
 
 
@@ -352,11 +370,16 @@ void test_function(const function<void(Mfloat&)>& function_being_tested, int exp
 }
 
 void classic_vs_LU(vector<int> &exps) {
+    /*
     for (int e: exps) {
         int size = pow(2, e);
         Mfloat M = generate_matrix(size, true);
         compare_det_time(M);
     }
+    */
+    int size = pow(2, 3);
+    Mfloat M = generate_matrix(size, true);
+    print_to_file(M);
 }
 
 
